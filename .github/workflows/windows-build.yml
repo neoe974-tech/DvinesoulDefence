@@ -1,0 +1,38 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-windows.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-windows.txt
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+      - name: Build standalone application
+        run: python -m PyInstaller --noconfirm --clean --windowed --name DvinesoulDefence --collect-all scapy app/main.py
+      - name: Package Windows application
+        shell: pwsh
+        run: Compress-Archive -Path dist/DvinesoulDefence -DestinationPath DvinesoulDefence-Windows-x64.zip
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DvinesoulDefence-Windows-x64
+          path: DvinesoulDefence-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
