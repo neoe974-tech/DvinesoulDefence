@@ -1,0 +1,4 @@
+# Python packages bundled with the Windows application.
+# Tkinter is provided by the official python.org Windows installer.
+scapy>=2.6.1,<3
+pyinstaller>=6.10,<7
