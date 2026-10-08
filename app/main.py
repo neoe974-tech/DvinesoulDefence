@@ -111,8 +111,9 @@ class DefenceApp:
      self.sniffstate.set(f'{len(names)} interface(s) detected. If capture fails, check Scapy and packet-capture permissions.')
      self.log('Packet interfaces: '+(', '.join(names) if names else 'none detected'))
     except Exception as e:
-     self.sniffstate.set(f'Could not list interfaces: {type(e).__name__}: {e}')
-     self.log(f'Interface discovery failed: {type(e).__name__}: {e}')
+     hint = ' On Windows, install Npcap from https://npcap.com/ and restart the app.' if platform.system() == 'Windows' else ' On Kali/Debian, install Scapy with: sudo apt install python3-scapy.'
+     self.sniffstate.set(f'Could not list interfaces: {type(e).__name__}: {e}.{hint}')
+     self.log(f'Interface discovery failed: {type(e).__name__}: {e}.{hint}')
  def _audit(self):
     f=self.tabs['audit']; tk.Label(f,text='LOCAL SYSTEM AUDIT',bg=BG,fg=GREEN,font=('TkFixedFont',14,'bold')).pack(anchor='w',padx=16,pady=14); tk.Label(f,text='Informational inventory; does not claim to be a complete vulnerability scanner.',bg=BG,fg=MUTED).pack(anchor='w',padx=16); self.button(f,'RUN LOCAL AUDIT',self.run_audit).pack(anchor='w',padx=16,pady=8); self.auditout=tk.Text(f,bg=PANEL,fg=WHITE); self.auditout.pack(fill='both',expand=True,padx=16,pady=8)
  def _password(self):
@@ -221,7 +222,8 @@ class DefenceApp:
      from scapy.all import sniff, get_if_list
      interfaces=get_if_list()
     except Exception as e:
-     messagebox.showerror('Scapy unavailable',f'Could not load Scapy packet capture.\n{type(e).__name__}: {e}\n\nOn Kali, install it with: sudo apt install python3-scapy'); self.log(f'Scapy unavailable: {type(e).__name__}: {e}'); return
+     hint = ('On Windows, install Npcap from https://npcap.com/ and run this app with suitable capture permissions.' if platform.system() == 'Windows' else 'On Kali/Debian, install it with: sudo apt install python3-scapy')
+     messagebox.showerror('Packet capture unavailable',f'Could not initialize Scapy packet capture.\n{type(e).__name__}: {e}\n\n{hint}'); self.log(f'Scapy unavailable: {type(e).__name__}: {e}'); return
     iface=self.sniffiface.get().strip() or None
     if iface and iface not in interfaces:
      messagebox.showerror('Unknown interface',f'Interface {iface!r} was not found. Click REFRESH INTERFACES and choose one of: {", ".join(interfaces) or "(none detected)"}'); return
@@ -257,7 +259,12 @@ class DefenceApp:
 
  def run_audit(self):
     import shutil
-    facts={'timestamp_utc':datetime.now(timezone.utc).isoformat(),'hostname':socket.gethostname(),'platform':platform.platform(),'system':platform.system(),'release':platform.release(),'architecture':platform.machine(),'python':platform.python_version(),'cpu_count':os.cpu_count(),'effective_user':os.environ.get('USER','unknown'),'disk_root_free_bytes':shutil.disk_usage('/').free,'checks':{'python_tkinter':'available','scapy':self._has_module('scapy'),'requests':self._has_module('requests')}}
+    root_path = Path.home().anchor or str(Path.home())
+    try:
+     disk_free = shutil.disk_usage(root_path).free
+    except OSError:
+     disk_free = None
+    facts={'timestamp_utc':datetime.now(timezone.utc).isoformat(),'hostname':socket.gethostname(),'platform':platform.platform(),'system':platform.system(),'release':platform.release(),'architecture':platform.machine(),'python':platform.python_version(),'cpu_count':os.cpu_count(),'effective_user':os.environ.get('USERNAME') or os.environ.get('USER','unknown'),'disk_root_free_bytes':disk_free,'checks':{'python_tkinter':'available','scapy':self._has_module('scapy'),'requests':self._has_module('requests')}}
     self.auditout.delete('1.0','end'); self.auditout.insert('end',json.dumps(facts,indent=2)); self.findings.append({'type':'local_system_inventory',**facts}); self.log('Local system inventory collected (informational, not a vulnerability verdict).')
  def _has_module(self,name):
     import importlib.util; return importlib.util.find_spec(name) is not None
