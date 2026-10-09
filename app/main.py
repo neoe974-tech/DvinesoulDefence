@@ -68,9 +68,9 @@ class DefenceApp:
     h=tk.Frame(self.root,bg=BG,padx=18,pady=10); h.pack(fill='x'); tk.Label(h,text='▲ DVINESOUL DEFENCE ▲',bg=BG,fg=GREEN,font=('TkFixedFont',22,'bold')).pack(anchor='w'); tk.Label(h,text='UNIFIED CYBERSECURITY WORKBENCH / DEFENSIVE OPERATIONS',bg=BG,fg=MUTED,font=('TkFixedFont',9)).pack(anchor='w'); self.status=tk.StringVar(value='● READY'); tk.Label(h,textvariable=self.status,bg=BG,fg=GREEN,font=('TkFixedFont',10,'bold')).pack(anchor='e')
     self.nb=ttk.Notebook(self.root); self.nb.pack(fill='both',expand=True,padx=12,pady=4)
     self.tabs={}
-    for key,title in [('overview','OVERVIEW'),('surface','THREAT SURFACE'),('ports','PORT SCANNER'),('dirs','DIRECTORY DISCOVERY'),('subs','SUBDOMAIN ENUM'),('sniff','PACKET SNIFFER'),('audit','SYSTEM AUDIT'),('password','PASSWORD SUITE')]:
+    for key,title in [('overview','OVERVIEW'),('surface','THREAT SURFACE'),('ports','PORT SCANNER'),('dirs','DIRECTORY DISCOVERY'),('subs','SUBDOMAIN ENUM'),('sniff','PACKET SNIFFER'),('audit','SYSTEM AUDIT'),('password','PASSWORD SUITE'),('keysec','KEYLOGGER LAB')]:
      f=tk.Frame(self.nb,bg=BG); self.tabs[key]=f; self.nb.add(f,text=title)
-    self._overview(); self._ports(); self._dirs(); self._subs(); self._surface(); self._sniff(); self._audit(); self._password()
+    self._overview(); self._ports(); self._dirs(); self._subs(); self._surface(); self._sniff(); self._audit(); self._password(); self._keysec()
     foot=tk.Frame(self.root,bg=BG,padx=12,pady=6); foot.pack(fill='x'); tk.Label(foot,text='LIVE EVENT CONSOLE',bg=BG,fg=GREEN,font=('TkFixedFont',9,'bold')).pack(anchor='w'); self.console=tk.Text(foot,height=6,bg='#050806',fg=GREEN,insertbackground=GREEN,relief='flat',font=('TkFixedFont',9),wrap='word'); self.console.pack(fill='x'); self.console.configure(state='disabled'); row=tk.Frame(foot,bg=BG); row.pack(fill='x',pady=4); self.button(row,'CLEAR LOG',self.clear_log).pack(side='left'); self.button(row,'EXPORT JSON REPORT',self.export).pack(side='right')
  def label(self,parent,text): tk.Label(parent,text=text,bg=BG,fg=WHITE,font=('TkFixedFont',10)).pack(anchor='w',padx=16,pady=(12,3))
  def entry(self,parent,default='',width=48):
@@ -118,6 +118,52 @@ class DefenceApp:
     f=self.tabs['audit']; tk.Label(f,text='LOCAL SYSTEM AUDIT',bg=BG,fg=GREEN,font=('TkFixedFont',14,'bold')).pack(anchor='w',padx=16,pady=14); tk.Label(f,text='Informational inventory; does not claim to be a complete vulnerability scanner.',bg=BG,fg=MUTED).pack(anchor='w',padx=16); self.button(f,'RUN LOCAL AUDIT',self.run_audit).pack(anchor='w',padx=16,pady=8); self.auditout=tk.Text(f,bg=PANEL,fg=WHITE); self.auditout.pack(fill='both',expand=True,padx=16,pady=8)
  def _password(self):
     f=self.tabs['password']; tk.Label(f,text='PASSWORD SUITE',bg=BG,fg=GREEN,font=('TkFixedFont',14,'bold')).pack(anchor='w',padx=16,pady=14); tk.Label(f,text='Assessment is local and heuristic. Avoid entering a password you currently use.',bg=BG,fg=MUTED).pack(anchor='w',padx=16); self.label(f,'Test password'); self.passvar=self.entry(f,''); row=tk.Frame(f,bg=BG); row.pack(anchor='w',padx=16,pady=8); self.button(row,'ASSESS LOCALLY',self.check_password).pack(side='left',padx=(0,8)); self.button(row,'GENERATE 20-CHAR PASSWORD',self.gen_password).pack(side='left'); self.passout=tk.StringVar(value='No assessment performed.'); tk.Label(f,textvariable=self.passout,bg=BG,fg=GREEN,wraplength=850,justify='left').pack(anchor='w',padx=16,pady=12); self.generated=tk.StringVar(value=''); tk.Entry(f,textvariable=self.generated,bg=PANEL,fg=WHITE,width=70).pack(anchor='w',padx=16,pady=4)
+ def _keysec(self):
+    f=self.tabs['keysec']
+    tk.Label(f,text='VISIBLE KEYLOGGER LAB / KEYBOARD EVENT TEST',bg=BG,fg=GREEN,font=('TkFixedFont',14,'bold')).pack(anchor='w',padx=16,pady=14)
+    tk.Label(f,text='Controlled test only: events are observed only when the dedicated test field below has focus and the test is active. It records key names, not typed text, passwords, clipboard data, or input from other applications. Nothing is transmitted or saved to disk.',bg=BG,fg=WHITE,wraplength=900,justify='left').pack(anchor='w',padx=16)
+    self.keylab_active=False
+    self.keylab_count=0
+    row=tk.Frame(f,bg=BG); row.pack(anchor='w',padx=16,pady=10)
+    self.button(row,'START VISIBLE TEST',self.start_keylab).pack(side='left',padx=(0,8))
+    self.button(row,'STOP TEST',self.stop_keylab).pack(side='left',padx=(0,8))
+    self.button(row,'CLEAR EVENTS',self.clear_keylab).pack(side='left')
+    self.keylab_state=tk.StringVar(value='STOPPED — press Start, then focus the test field.')
+    tk.Label(f,textvariable=self.keylab_state,bg=BG,fg=GREEN,wraplength=900,justify='left').pack(anchor='w',padx=16,pady=4)
+    tk.Label(f,text='TEST FIELD — do not type passwords or private information',bg=BG,fg=MUTED).pack(anchor='w',padx=16,pady=(10,3))
+    self.keylab_entry=tk.Entry(f,bg=PANEL,fg=WHITE,insertbackground=WHITE,width=72,relief='flat')
+    self.keylab_entry.pack(anchor='w',padx=16,pady=4)
+    self.keylab_entry.bind('<KeyPress>',self.record_keylab_event)
+    self.keylab_out=tk.Text(f,bg=PANEL,fg=WHITE,height=14,state='disabled')
+    self.keylab_out.pack(fill='both',expand=True,padx=16,pady=8)
+ def start_keylab(self):
+    self.keylab_active=True
+    self.keylab_state.set('ACTIVE — app-local visible test. Click the dedicated field and type harmless test keys.')
+    self.keylab_entry.focus_set()
+    self.log('Visible keyboard test started; key names only, dedicated field only.')
+ def stop_keylab(self):
+    self.keylab_active=False
+    self.keylab_state.set('STOPPED — no keyboard events are being recorded.')
+    self.log('Visible keyboard test stopped.')
+ def record_keylab_event(self,event):
+    if not self.keylab_active: return
+    self.keylab_count+=1
+    modifiers=[]
+    if event.state & 0x0001: modifiers.append('Shift')
+    if event.state & 0x0004: modifiers.append('Ctrl')
+    if event.state & 0x0008: modifiers.append('Alt')
+    key=' + '.join(modifiers+[event.keysym])
+    line=f'{self.keylab_count:04d}  {datetime.now().strftime("%H:%M:%S")}  {key}'
+    self.keylab_out.configure(state='normal')
+    self.keylab_out.insert('end',line+'\\n')
+    self.keylab_out.see('end')
+    self.keylab_out.configure(state='disabled')
+ def clear_keylab(self):
+    self.keylab_count=0
+    self.keylab_out.configure(state='normal')
+    self.keylab_out.delete('1.0','end')
+    self.keylab_out.configure(state='disabled')
+    self.log('Visible keyboard test event list cleared.')
  def pick(self,var):
     name=filedialog.askopenfilename(title='Select wordlist');
     if name: var.set(name)
